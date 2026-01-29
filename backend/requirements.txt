@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-dotenv
+passlib[bcrypt]
+python-jose
+requests
+pytest
+email-validator
+passlib[bcrypt]
+python-jose
+sqlalchemy
+psycopg2-binary
+cloud-sql-python-connector[pg8000]

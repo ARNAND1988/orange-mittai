@@ -1,0 +1,208 @@
+-- =========================================================
+-- ORANGE MITTAI - FULL RESET + SEED (PostgreSQL / Cloud SQL)
+-- =========================================================
+-- ⚠️ DESTRUCTIVE: Drops and recreates EVERYTHING
+-- Safe for DEV / STAGING only
+-- =========================================================
+
+BEGIN;
+
+-- ========================
+-- 1. DROP EVERYTHING
+-- ========================
+
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS product_tags CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS tags CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+DROP TYPE IF EXISTS order_status CASCADE;
+DROP TYPE IF EXISTS tag_type CASCADE;
+
+-- ========================
+-- 2. ENUM TYPES
+-- ========================
+
+CREATE TYPE tag_type AS ENUM (
+  'CATEGORY',
+  'SUBCATEGORY',
+  'PROMOTION',
+  'LABEL'
+);
+
+CREATE TYPE order_status AS ENUM (
+  'PAYMENT_PENDING',
+  'PROCESSING',
+  'COMPLETED'
+);
+
+-- ========================
+-- 3. USERS
+-- ========================
+
+CREATE TABLE users (
+  id BIGSERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  phone VARCHAR(20),
+  hashed_password VARCHAR(255) NOT NULL,
+  is_admin BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ========================
+-- 4. TAGS
+-- ========================
+
+CREATE TABLE tags (
+  id BIGSERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  slug VARCHAR(120) UNIQUE NOT NULL,
+  type tag_type NOT NULL,
+  parent_id BIGINT REFERENCES tags(id) ON DELETE SET NULL
+);
+
+-- ========================
+-- 5. PRODUCTS
+-- ========================
+
+CREATE TABLE products (
+  id BIGSERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  image VARCHAR(255),
+  price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
+  stock INT DEFAULT 0 CHECK (stock >= 0),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ========================
+-- 6. PRODUCT ↔ TAGS
+-- ========================
+
+CREATE TABLE product_tags (
+  product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  tag_id BIGINT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (product_id, tag_id)
+);
+
+-- ========================
+-- 7. ORDERS
+-- ========================
+
+CREATE TABLE orders (
+  id BIGSERIAL PRIMARY KEY,
+  order_id VARCHAR(50) UNIQUE,
+  user_id BIGINT NOT NULL REFERENCES users(id),
+  status order_status NOT NULL,
+  total_amount NUMERIC(10,2),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ========================
+-- 8. ORDER ITEMS
+-- ========================
+
+CREATE TABLE order_items (
+  id BIGSERIAL PRIMARY KEY,
+  order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  product_id BIGINT NOT NULL REFERENCES products(id),
+  price NUMERIC(10,2) NOT NULL,
+  quantity INT NOT NULL CHECK (quantity > 0)
+);
+
+-- ========================
+-- 9. SEED USERS
+-- ========================
+
+INSERT INTO users (email, first_name, last_name, phone, hashed_password, is_admin)
+VALUES
+('admin@test.com', 'Admin', 'User', '9999999999', '$2b$12$REPLACE_ADMIN_HASH', TRUE),
+('customer1@test.com', 'Customer', 'One', '9000000001', '$2b$12$REPLACE_CUSTOMER_HASH', FALSE),
+('customer2@test.com', 'Customer', 'Two', '9000000002', '$2b$12$REPLACE_CUSTOMER_HASH', FALSE);
+
+-- ========================
+-- 10. CATEGORY TAGS
+-- ========================
+
+INSERT INTO tags (name, slug, type) VALUES
+('Chocolate', 'chocolate', 'CATEGORY'::tag_type),
+('Candy', 'candy', 'CATEGORY'::tag_type),
+('Gummies', 'gummies', 'CATEGORY'::tag_type),
+('Biscuits', 'biscuits', 'CATEGORY'::tag_type),
+('Snacks', 'snacks', 'CATEGORY'::tag_type),
+('Bakery', 'bakery', 'CATEGORY'::tag_type),
+('Beverages', 'beverages', 'CATEGORY'::tag_type);
+
+-- ========================
+-- 11. SUBCATEGORY TAGS (FIXED ENUM CASTS ✅)
+-- ========================
+
+INSERT INTO tags (name, slug, type, parent_id)
+SELECT 'Dark Chocolate', 'dark-chocolate', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='chocolate'
+UNION ALL SELECT 'Milk Chocolate', 'milk-chocolate', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='chocolate'
+UNION ALL SELECT 'Hard Candy', 'hard-candy', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='candy'
+UNION ALL SELECT 'Soft Candy', 'soft-candy', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='candy'
+UNION ALL SELECT 'Fruit Gummies', 'fruit-gummies', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='gummies'
+UNION ALL SELECT 'Sour Gummies', 'sour-gummies', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='gummies'
+UNION ALL SELECT 'Cream Biscuits', 'cream-biscuits', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='biscuits'
+UNION ALL SELECT 'Digestive Biscuits', 'digestive-biscuits', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='biscuits'
+UNION ALL SELECT 'Chips', 'chips', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='snacks'
+UNION ALL SELECT 'Namkeen', 'namkeen', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='snacks'
+UNION ALL SELECT 'Cakes', 'cakes', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='bakery'
+UNION ALL SELECT 'Cookies', 'cookies', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='bakery'
+UNION ALL SELECT 'Soft Drinks', 'soft-drinks', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='beverages'
+UNION ALL SELECT 'Juices', 'juices', 'SUBCATEGORY'::tag_type, id FROM tags WHERE slug='beverages';
+
+-- ========================
+-- 12. PROMOTION / LABEL TAGS
+-- ========================
+
+INSERT INTO tags (name, slug, type) VALUES
+('Limited Offer', 'limited-offer', 'PROMOTION'::tag_type),
+('Discounted', 'discounted', 'PROMOTION'::tag_type),
+('New Arrival', 'new-arrival', 'LABEL'::tag_type),
+('Best Seller', 'best-seller', 'LABEL'::tag_type),
+('Trending', 'trending', 'LABEL'::tag_type),
+('Seasonal Special', 'seasonal-special', 'LABEL'::tag_type);
+
+-- ========================
+-- 13. SAMPLE PRODUCTS
+-- ========================
+
+INSERT INTO products (name, description, image, price, stock, is_active)
+VALUES
+('70% Dark Bar 1', 'Tasty dark chocolate made with quality ingredients.', '/images/product1.png', 9.99, 120, TRUE),
+('Milk Choco Bar 1', 'Tasty milk chocolate made with quality ingredients.', '/images/product2.png', 7.49, 200, TRUE),
+('Lemon Drops 1', 'Tasty hard candy made with quality ingredients.', '/images/product3.png', 3.99, 300, TRUE);
+
+-- ========================
+-- 14. PRODUCT ↔ TAG LINKS
+-- ========================
+
+INSERT INTO product_tags (product_id, tag_id)
+SELECT p.id, t.id
+FROM products p
+JOIN tags t ON t.slug IN ('chocolate', 'dark-chocolate')
+WHERE p.name ILIKE '%Dark%';
+
+-- ========================
+-- 15. SAMPLE ORDER + ITEMS
+-- ========================
+
+INSERT INTO orders (user_id, status, total_amount)
+SELECT id, 'PROCESSING'::order_status, 29.97
+FROM users WHERE email='customer1@test.com';
+
+UPDATE orders
+SET order_id = 'ORD-' || LPAD(id::TEXT, 6, '0');
+
+INSERT INTO order_items (order_id, product_id, price, quantity)
+VALUES
+(1, 1, 9.99, 3);
+
+COMMIT;

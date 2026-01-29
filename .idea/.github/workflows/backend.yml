@@ -1,0 +1,34 @@
+name: Backend → Cloud Run
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - run: gcloud auth configure-docker europe-west4-docker.pkg.dev --quiet
+
+      - run: |
+          IMAGE=europe-west4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/orange-mittai/backend:${{ github.sha }}
+          docker build -t $IMAGE backend
+          docker push $IMAGE
+
+      - run: |
+          gcloud run deploy orange-mittai-backend \
+            --image=$IMAGE \
+            --region=europe-west4 \
+            --platform=managed \
+            --allow-unauthenticated

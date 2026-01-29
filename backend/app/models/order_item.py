@@ -1,0 +1,21 @@
+from sqlalchemy import Column, Integer, ForeignKey, Float
+from sqlalchemy.orm import relationship
+from app.db.base import Base
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+
+    price = Column(Float, nullable=False)
+    quantity = Column(Integer, nullable=False)
+
+    order = relationship("Order", back_populates="items")
+    product = relationship("Product")
+
+    @property
+    def product_name(self):
+        return self.product.name if self.product else None

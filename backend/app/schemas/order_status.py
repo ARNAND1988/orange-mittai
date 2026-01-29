@@ -1,0 +1,9 @@
+from enum import Enum
+
+class OrderStatus(str, Enum):
+    PAYMENT_PENDING = "PAYMENT_PENDING"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    REFUNDED = "REFUNDED"
+    FAILED = "FAILED"

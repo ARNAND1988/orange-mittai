@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Better touch scrolling on iOS */
+.no-scrollbar {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Reusable product card hover */
+.product-card {
+  @apply transition hover:-translate-y-0.5 hover:shadow-md;
+}
