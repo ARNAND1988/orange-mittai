@@ -11,5 +11,5 @@ email-validator
 passlib[bcrypt]
 python-jose
 sqlalchemy
-psycopg2-binary
 cloud-sql-python-connector[pg8000]
+pg8000

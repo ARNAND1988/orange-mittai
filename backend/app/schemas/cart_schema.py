@@ -10,5 +10,6 @@ class CartItemRead(BaseModel):
     user_id: int
     quantity: int
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }

@@ -12,8 +12,9 @@ class TagBase(BaseModel):
 class TagRead(TagBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 # ========================
 # Product schemas
@@ -32,8 +33,9 @@ class ProductRead(ProductBase):
     id: int
     tags: List[TagRead] = Field(default_factory=list)
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 
 class ProductCreate(ProductBase):
@@ -55,8 +57,9 @@ class ProductCategoryRead(BaseModel):
     products: List[ProductRead] = Field(default_factory=list)
     subcategories: List["ProductCategoryRead"] = Field(default_factory=list)
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 
 ProductCategoryRead.update_forward_refs()

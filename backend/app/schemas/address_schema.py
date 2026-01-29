@@ -13,8 +13,9 @@ class AddressRead(BaseModel):
     postal_code: str
     country: str
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class UserAddressUpdate(BaseModel):
     label: Optional[str]

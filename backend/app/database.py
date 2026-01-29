@@ -47,14 +47,14 @@ else:
     def getconn():
         return connector.connect(
             INSTANCE_CONNECTION_NAME,
-            "psycopg2",
+            "pg8000",
             user=DB_USER,
             db=DB_NAME,
             enable_iam_auth=True,
         )
 
     engine = create_engine(
-        "postgresql+psycopg2://",
+        "postgresql+pg8000://",
         creator=getconn,
         pool_size=5,
         max_overflow=2,
