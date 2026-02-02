@@ -32,7 +32,7 @@ class UserAddress(Base):
     is_default = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    user = relationship("User", backref="addresses")
+    user = relationship("User", back_populates="addresses")
 
     def __repr__(self):
         return f"<UserAddress({self.house_number}, {self.postal_code})>"
@@ -57,7 +57,7 @@ class OrderAddress(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    order = relationship("Order", backref="address")
+    order = relationship("Order", back_populates="address")
     user = relationship("User")
 
     def __repr__(self):

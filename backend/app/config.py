@@ -14,3 +14,7 @@ SHOP_NAME = os.getenv("SHOP_NAME", "Orange Mittai")
 
 SECRET_KEY = "supersecretkey"  # change for production
 ALGORITHM = "HS256"
+CDN_BASE_URL = os.getenv("CDN_BASE_URL", "mock")
+BUCKET_NAME = os.getenv("BUCKET_NAME", "orange-mittai-store")
+
+

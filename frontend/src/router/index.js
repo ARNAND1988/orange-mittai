@@ -45,6 +45,10 @@ const routes = [
 {
   path: "/orders/:orderId",
   component: OrderDetailsView,
+},
+{
+  path: "/admin/products/add",
+  component: () => import("@/views/AdminProductAddEdit.vue")
 }
 ]
 

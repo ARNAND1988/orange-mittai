@@ -11,14 +11,14 @@ from app.models.user import User
 
 router = APIRouter()
 
-@router.get("/", response_model=List[TagRead])
+@router.get("", response_model=List[TagRead])
 def list_tags(
         db: Session = Depends(get_db),
         admin: User = Depends(require_admin),
 ):
     return db.query(Tag).order_by(Tag.type, Tag.name).all()
 
-@router.post("/", response_model=TagRead)
+@router.post("", response_model=TagRead)
 def create_tag(
         payload: TagCreate,
         db: Session = Depends(get_db),

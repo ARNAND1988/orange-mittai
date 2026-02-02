@@ -11,7 +11,7 @@
              rounded-t-xl"
     >
       <img
-        :src="getImage(product.image)"
+        :src="product.image"
         class="max-h-24 max-w-[85%] object-contain"
         alt=""
       />
@@ -124,9 +124,5 @@ const badgeClass = (type) => {
   }
 };
 
-const getImage = (path) => {
-  if (!path) return "";
-  const fileName = path.split("/").pop();
-  return new URL(`../assets/images/${fileName}`, import.meta.url).href;
-};
+
 </script>

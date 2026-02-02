@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
 from app.db.base import Base
 from sqlalchemy.sql import func
 
@@ -16,6 +17,11 @@ class User(Base):
     phone = Column(String, nullable=True)
 
     is_admin = Column(Boolean, default=False)
+    addresses = relationship(
+        "UserAddress",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"

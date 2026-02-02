@@ -12,7 +12,7 @@ from app.services.order_admin_service import get_orders, update_order_status_ser
 
 router = APIRouter()
 
-@router.get("/")
+@router.get("")
 def list_all_orders(
         db: Session = Depends(get_db),
         admin: User = Depends(require_admin),

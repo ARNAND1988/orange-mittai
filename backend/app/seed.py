@@ -1,60 +1,137 @@
-# ✅ MUST BE FIRST
-import app.models
+# =====================================================
+# 🔥 FORCE MODEL REGISTRATION (CRITICAL)
+# =====================================================
+
+from app.models.user import User, PasswordReset
+from app.models.address import UserAddress, OrderAddress
+from app.models.product import Product, Tag
+from app.models.cart import CartItem
+from app.models.order import Order
+from app.models.order_item import OrderItem
+
+# =====================================================
+# SAFE TO IMPORT SQLALCHEMY AFTER MODELS
+# =====================================================
 
 from sqlalchemy.orm import Session
 import random
 
 from app.database import SessionLocal, Base, engine
-from app.models.user import User
-from app.models.product import Product, Tag
-from app.models.order import Order
-from app.models.order_item import OrderItem
 from app.schemas.order_status import OrderStatus
 from app.utils.security import hash_password
 from app.utils.order_id import generate_order_id
 
-# ========================
-# Setup
-# ========================
+# =====================================================
+# RESET DATABASE
+# =====================================================
+
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
+
 db: Session = SessionLocal()
 
-# ========================
-# Users (GDPR-safe)
-# ========================
+# =====================================================
+# USERS
+# =====================================================
+
 users = [
     User(
         email="admin@test.com",
         first_name="Admin",
         last_name="User",
-        phone="9999999999",
+        phone="+31600000000",
         hashed_password=hash_password("admin123"),
         is_admin=True,
     ),
     User(
         email="customer1@test.com",
-        first_name="Customer",
-        last_name="One",
-        phone="9000000001",
+        first_name="Jan",
+        last_name="de Vries",
+        phone="+31612345678",
         hashed_password=hash_password("customer123"),
     ),
     User(
         email="customer2@test.com",
-        first_name="Customer",
-        last_name="Two",
-        phone="9000000002",
+        first_name="Sanne",
+        last_name="Jansen",
+        phone="+31687654321",
         hashed_password=hash_password("customer123"),
     ),
 ]
 
-
 db.add_all(users)
 db.commit()
 
-# ========================
-# Category Tags
-# ========================
+# =====================================================
+# USER ADDRESSES — Netherlands 🇳🇱
+# =====================================================
+
+addresses = [
+    UserAddress(
+        user_id=users[1].id,
+        label="Home",
+        name="Jan de Vries",
+        phone="+31612345678",
+        house_number="12",
+        line1="Prinsengracht",
+        line2="3rd Floor",
+        city="Amsterdam",
+        state="Noord-Holland",
+        postal_code="1015 AB",
+        country="Netherlands",
+        is_default=True,
+    ),
+    UserAddress(
+        user_id=users[1].id,
+        label="Office",
+        name="Jan de Vries",
+        phone="+31612345678",
+        house_number="221",
+        line1="Herengracht",
+        line2=None,
+        city="Amsterdam",
+        state="Noord-Holland",
+        postal_code="1016 BN",
+        country="Netherlands",
+        is_default=False,
+    ),
+    UserAddress(
+        user_id=users[2].id,
+        label="Home",
+        name="Sanne Jansen",
+        phone="+31687654321",
+        house_number="45",
+        line1="Coolsingel",
+        line2="Apartment 5B",
+        city="Rotterdam",
+        state="Zuid-Holland",
+        postal_code="3012 AD",
+        country="Netherlands",
+        is_default=True,
+    ),
+    UserAddress(
+        user_id=users[2].id,
+        label="Other",
+        name="Sanne Jansen",
+        phone="+31687654321",
+        house_number="88",
+        line1="Oudegracht",
+        line2=None,
+        city="Utrecht",
+        state="Utrecht",
+        postal_code="3511 AR",
+        country="Netherlands",
+        is_default=False,
+    ),
+]
+
+db.add_all(addresses)
+db.commit()
+
+# =====================================================
+# CATEGORY TAGS
+# =====================================================
+
 category_tags = {
     "Chocolate": Tag(name="Chocolate", slug="chocolate", type="CATEGORY"),
     "Candy": Tag(name="Candy", slug="candy", type="CATEGORY"),
@@ -68,9 +145,10 @@ category_tags = {
 db.add_all(category_tags.values())
 db.commit()
 
-# ========================
-# Subcategory Tags
-# ========================
+# =====================================================
+# SUBCATEGORY TAGS
+# =====================================================
+
 subcategory_tags = {
     "Dark Chocolate": Tag(
         name="Dark Chocolate",
@@ -96,196 +174,68 @@ subcategory_tags = {
         type="SUBCATEGORY",
         parent=category_tags["Candy"],
     ),
-    "Fruit Gummies": Tag(
-        name="Fruit Gummies",
-        slug="fruit-gummies",
-        type="SUBCATEGORY",
-        parent=category_tags["Gummies"],
-    ),
-    "Sour Gummies": Tag(
-        name="Sour Gummies",
-        slug="sour-gummies",
-        type="SUBCATEGORY",
-        parent=category_tags["Gummies"],
-    ),
-    "Cream Biscuits": Tag(
-        name="Cream Biscuits",
-        slug="cream-biscuits",
-        type="SUBCATEGORY",
-        parent=category_tags["Biscuits"],
-    ),
-    "Digestive Biscuits": Tag(
-        name="Digestive Biscuits",
-        slug="digestive-biscuits",
-        type="SUBCATEGORY",
-        parent=category_tags["Biscuits"],
-    ),
-    "Chips": Tag(
-        name="Chips",
-        slug="chips",
-        type="SUBCATEGORY",
-        parent=category_tags["Snacks"],
-    ),
-    "Namkeen": Tag(
-        name="Namkeen",
-        slug="namkeen",
-        type="SUBCATEGORY",
-        parent=category_tags["Snacks"],
-    ),
-    "Cakes": Tag(
-        name="Cakes",
-        slug="cakes",
-        type="SUBCATEGORY",
-        parent=category_tags["Bakery"],
-    ),
-    "Cookies": Tag(
-        name="Cookies",
-        slug="cookies",
-        type="SUBCATEGORY",
-        parent=category_tags["Bakery"],
-    ),
-    "Soft Drinks": Tag(
-        name="Soft Drinks",
-        slug="soft-drinks",
-        type="SUBCATEGORY",
-        parent=category_tags["Beverages"],
-    ),
-    "Juices": Tag(
-        name="Juices",
-        slug="juices",
-        type="SUBCATEGORY",
-        parent=category_tags["Beverages"],
-    ),
 }
-
 
 db.add_all(subcategory_tags.values())
 db.commit()
 
-# ========================
-# Promotion / Label Tags (⬅️ EXPANDED)
-# ========================
+# =====================================================
+# PROMOTION / LABEL TAGS
+# =====================================================
+
 promo_tags = [
     Tag(name="Limited Offer", slug="limited-offer", type="PROMOTION"),
     Tag(name="Discounted", slug="discounted", type="PROMOTION"),
     Tag(name="New Arrival", slug="new-arrival", type="LABEL"),
     Tag(name="Best Seller", slug="best-seller", type="LABEL"),
-    Tag(name="Trending", slug="trending", type="LABEL"),
-    Tag(name="Seasonal Special", slug="seasonal-special", type="LABEL"),
 ]
-
 
 db.add_all(promo_tags)
 db.commit()
 
-# ========================
-# Products (⬅️ MORE VARIETY)
-# ========================
-product_names = {
-    "Dark Chocolate": [
-        "70% Dark Bar", "85% Dark Bar", "Dark Cocoa Bite",
-        "Midnight Truffle", "Intense Cocoa Square"
-    ],
-    "Milk Chocolate": [
-        "Milk Choco Bar", "Creamy Cocoa", "Caramel Milk",
-        "Hazelnut Milk Bar", "Almond Milk Chocolate"
-    ],
-    "Hard Candy": [
-        "Lemon Drops", "Mint Rocks", "Cola Candy",
-        "Orange Lozenges", "Ginger Candy"
-    ],
-    "Soft Candy": [
-        "Fruit Chews", "Soft Toffee", "Berry Bites",
-        "Caramel Cubes", "Mango Chews"
-    ],
-    "Fruit Gummies": [
-        "Gummy Bears", "Fruit Rings", "Gummy Worms",
-        "Peach Gummies", "Strawberry Gummies"
-    ],
-    "Sour Gummies": [
-        "Sour Bears", "Tangy Worms", "Sour Mix",
-        "Sour Cola Bottles", "Sour Apple Rings"
-    ],
-    "Cream Biscuits": [
-        "Vanilla Cream Biscuit", "Chocolate Cream Biscuit",
-        "Strawberry Cream Biscuit"
-    ],
-    "Digestive Biscuits": [
-        "Oat Digestive", "Wheat Digestive", "Multigrain Digestive"
-    ],
-    "Chips": [
-        "Classic Chips", "Masala Chips", "Salted Chips",
-        "Chili Chips", "Sour Cream Chips"
-    ],
-    "Namkeen": [
-        "Mixture", "Spicy Sev", "Salted Peanuts",
-        "Bhujia", "Chana Dal"
-    ],
-    "Cakes": [
-        "Chocolate Cake Slice", "Vanilla Cake Slice",
-        "Red Velvet Slice", "Butterscotch Slice"
-    ],
-    "Cookies": [
-        "Butter Cookies", "Choco Chip Cookies",
-        "Oat Cookies", "Almond Cookies"
-    ],
-    "Soft Drinks": [
-        "Cola Drink", "Orange Soda",
-        "Lemon Soda", "Ginger Ale"
-    ],
-    "Juices": [
-        "Apple Juice", "Mango Juice",
-        "Orange Juice", "Mixed Fruit Juice"
-    ],
-}
+# =====================================================
+# PRODUCTS
+# =====================================================
 
 product_images = [
     "/images/product1.png",
     "/images/product2.png",
     "/images/product3.png",
-    "/images/product4.png",
-    "/images/product5.png",
 ]
 
 products = []
 
-# ⬅️ Increase volume: 20 products per subcategory
 for subcat_name, subcat_tag in subcategory_tags.items():
     category_tag = subcat_tag.parent
 
-    for i in range(20):
-        base = random.choice(product_names[subcat_name])
-
+    for i in range(10):
         product = Product(
-            name=f"{base} {i + 1}",
-            description=f"Tasty {base.lower()} made with quality ingredients.",
+            name=f"{subcat_name} Item {i + 1}",
+            description=f"Tasty {subcat_name.lower()} product",
             image=random.choice(product_images),
-            price=round(random.uniform(1.5, 25.0), 2),
-            stock=random.randint(0, 300),
-            is_active=random.random() > 0.1,
+            price=round(random.uniform(2.0, 25.0), 2),
+            stock=random.randint(0, 200),
+            is_active=True,
         )
 
-        # Core classification tags
         product.tags.extend([category_tag, subcat_tag])
-
-        # ⬅️ Attach 1–3 random promo/label tags
-        for tag in random.sample(promo_tags, random.randint(0, 3)):
-            product.tags.append(tag)
+        product.tags.extend(random.sample(promo_tags, random.randint(0, 2)))
 
         products.append(product)
 
 db.add_all(products)
 db.commit()
 
-# ========================
-# Orders + Order Items
-# ========================
+# =====================================================
+# ORDERS + ORDER ITEMS
+# =====================================================
+
 customers = [u for u in users if not u.is_admin]
 all_products = db.query(Product).all()
 
 for customer in customers:
-    for _ in range(5):  # ⬅️ More orders
-        selected_products = random.sample(all_products, random.randint(2, 6))
+    for _ in range(3):
+        selected_products = random.sample(all_products, random.randint(2, 5))
 
         order = Order(
             user_id=customer.id,
@@ -299,12 +249,14 @@ for customer in customers:
 
         db.add(order)
         db.flush()
+
         order.order_id = generate_order_id(order.id)
 
         total = 0
         for product in selected_products:
-            qty = random.randint(1, 4)
+            qty = random.randint(1, 3)
             total += product.price * qty
+
             order.items.append(
                 OrderItem(
                     product=product,
@@ -318,4 +270,4 @@ for customer in customers:
 db.commit()
 db.close()
 
-print("✅ Seeded rich dataset with more products, labels, and orders!")
+print("✅ Seed completed successfully (NL users, addresses, products, orders)")

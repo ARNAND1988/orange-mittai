@@ -121,9 +121,9 @@ CREATE TABLE order_items (
 
 INSERT INTO users (email, first_name, last_name, phone, hashed_password, is_admin)
 VALUES
-('admin@test.com', 'Admin', 'User', '9999999999', '$2b$12$REPLACE_ADMIN_HASH', TRUE),
-('customer1@test.com', 'Customer', 'One', '9000000001', '$2b$12$REPLACE_CUSTOMER_HASH', FALSE),
-('customer2@test.com', 'Customer', 'Two', '9000000002', '$2b$12$REPLACE_CUSTOMER_HASH', FALSE);
+('admin@test.com', 'Admin', 'User', '9999999999', '$5$rounds=535000$Hsm1juCXvG2hTbgi$T1ttikfhCeN03sMNeMglPjexBXgTsfjZsNTziaOF4o1', TRUE),
+('customer1@test.com', 'Customer', 'One', '9000000001', '$5$rounds=535000$dKEB7Qo3YpHzLMXQ$cDwpMAM05Y5Di/.f0JTgo.K14RUl39TCHjHbfLlxb00', FALSE),
+('customer2@test.com', 'Customer', 'Two', '9000000002', '$5$rounds=535000$7bviffQsYpprm4vW$Q18YDAb2xxP96kei.kr6LmCtZA8JmJWG4KTAuB7AD48', FALSE);
 
 -- ========================
 -- 10. CATEGORY TAGS

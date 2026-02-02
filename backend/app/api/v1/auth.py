@@ -5,6 +5,7 @@ import random
 
 from app.database import get_db
 from app.models.user import User, PasswordReset
+from fastapi.security import OAuth2PasswordRequestForm
 from app.schemas.user_schema import UserCreate, UserRead
 from app.schemas.auth_schema import (
     ForgotPasswordRequest,
@@ -27,7 +28,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     db_user = User(
         email=user.email,
-        name=user.name,
+        first_name=user.first_name,
+        last_name=user.last_name,
         phone=user.phone,
         hashed_password=hash_password(user.password),
         is_admin=False,
@@ -41,13 +43,13 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 # ---- Login endpoint ----
 @router.post("/login")
-def login(data: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == data.email).first()
-    print(user)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+def login(
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.email == form_data.username).first()
 
-    if not verify_password(data.password, user.hashed_password):
+    if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     access_token = create_access_token({

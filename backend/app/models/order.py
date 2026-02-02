@@ -1,7 +1,14 @@
-from sqlalchemy import Column, Integer, ForeignKey, Float, DateTime, String
+from sqlalchemy import Column, Integer, ForeignKey, Float, DateTime, String, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.db.base import Base
+from app.schemas.order_status import OrderStatus
+
+order_status_enum = Enum(
+    OrderStatus,
+    name="order_status",
+    create_type=False  # 🚨 REQUIRED for Cloud SQL
+)
 
 class Order(Base):
     __tablename__ = "orders"
@@ -13,10 +20,17 @@ class Order(Base):
 
     total_amount = Column(Float, nullable=False)
 
-    status = Column(String, default="PAYMENT_PENDING", index=True)
+    status = Column(order_status_enum, default=OrderStatus.PAYMENT_PENDING, index=True)
     payment_method = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    address = relationship(
+        "OrderAddress",
+        uselist=False,                  # 🔥 SINGLE object
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
 
     items = relationship(
         "OrderItem",

@@ -46,14 +46,19 @@ const handleLogout = () => {
 <template>
   <nav class="w-full z-50 bg-white border-b border-gray-200 shadow-sm relative">
     <div class="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
-
       <!-- Brand -->
       <router-link to="/" class="flex items-center">
-        <img
-          src="../assets/images/menu_logo.png"
-          class="h-12 w-auto max-w-[220px] object-contain"
-          alt="Orange Mittai"
-        />
+      <img
+        src="../assets/images/img.png"
+        class="h-20 w-auto max-w-[240px] object-contain scale-105 origin-left"
+        alt="Orange Mittai"
+      />
+<img
+  src="../assets/images/logo.png"
+  class="h-20 w-auto max-w-[240px] object-contain scale-105 origin-left"
+  alt="Orange Mittai"
+/>
+
       </router-link>
 
       <!-- Icons -->

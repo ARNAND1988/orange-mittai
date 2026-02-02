@@ -13,7 +13,7 @@ router = APIRouter()
 # ------------------------------
 # Add item to cart
 # ------------------------------
-@router.post("/", response_model=CartItemRead)
+@router.post("", response_model=CartItemRead)
 def add_to_cart(item: CartItemCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -42,7 +42,7 @@ def add_to_cart(item: CartItemCreate, db: Session = Depends(get_db), user=Depend
 # ------------------------------
 # Get all cart items for user
 # ------------------------------
-@router.get("/", response_model=List[CartItemRead])
+@router.get("", response_model=List[CartItemRead])
 def get_cart(db: Session = Depends(get_db), user=Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")

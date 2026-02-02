@@ -13,3 +13,5 @@ python-jose
 sqlalchemy
 cloud-sql-python-connector[pg8000]
 pg8000
+google-cloud-storage
+python-multipart

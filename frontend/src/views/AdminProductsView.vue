@@ -1,110 +1,115 @@
 <script setup>
 import { ref, onMounted } from "vue"
-import api from "@/services/api"
-import { fetchProductsForAdmin, softDelete, restore, updateProduct  } from "@/services/productService";
+import { useRouter } from "vue-router"
+import {
+  fetchProductsForAdmin,
+  softDelete,
+  restore
+} from "@/services/productService"
 
+const router = useRouter()
 const products = ref([])
 
 const fetchProducts = async () => {
   products.value = await fetchProductsForAdmin()
-  console.log(products.value)
 }
 
-const softDeleteFn = async (product) => {
-  if (!confirm("Deactivate this product?")) return
-
-  await softDelete(product.id)
-  product.is_active = false
-}
-
-const restoreFn = async (product) => {
-  await restore(product.id)
-  product.is_active = true
-}
-
-
-const saveProduct = async (product) => {
-  await updateProduct(
-    product.id,
-    product.name,
-    product.price,
-    product.stock,)
+const toggleActive = async (product) => {
+  if (product.is_active) {
+    if (!confirm("Deactivate this product?")) return
+    await softDelete(product.id)
+    product.is_active = false
+  } else {
+    await restore(product.id)
+    product.is_active = true
+  }
 }
 
 onMounted(fetchProducts)
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto py-8">
-    <h1 class="text-2xl font-semibold mb-6">
-      Admin – Products
-    </h1>
+  <div class="max-w-7xl mx-auto py-8">
 
-    <table class="w-full bg-white border rounded shadow">
-      <thead class="bg-gray-100">
-        <tr>
-          <th class="p-3 text-left">Name</th>
-          <th class="p-3 text-left">Price (€)</th>
-          <th class="p-3 text-left">Stock</th>
-          <th class="p-3"></th>
-        </tr>
-      </thead>
+    <!-- HEADER -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-semibold text-gray-800">
+        Products
+      </h1>
 
-      <tbody>
-        <tr
-          v-for="product in products"
-          :key="product.id"
-          class="border-t"
-          :class="!product.is_active ? 'opacity-50 bg-gray-50' : ''"
-        >
-          <td class="p-3">
-            <input v-model="product.name" class="border px-2 py-1 w-full" />
-          </td>
+      <button
+        @click="router.push('/admin/products/add')"
+        class="bg-orange-600 text-white px-4 py-2 rounded-lg
+               hover:bg-orange-700 shadow-sm"
+      >
+        + Add Product
+      </button>
+    </div>
 
-          <td class="p-3">
-            <input
-              v-model.number="product.price"
-              type="number"
-              step="0.01"
-              class="border px-2 py-1 w-full"
-            />
-          </td>
+    <!-- PRODUCT GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        v-for="product in products"
+        :key="product.id"
+        class="bg-white rounded-xl border shadow-sm
+               hover:shadow-md transition p-4"
+        :class="!product.is_active && 'opacity-60'"
+      >
+        <!-- IMAGE -->
+        <img
+          :src="product.image"
+          class="w-full h-40 object-cover rounded-lg mb-3"
+        />
 
-          <td class="p-3">
-            <input
-              v-model.number="product.stock"
-              type="number"
-              class="border px-2 py-1 w-full"
-            />
-          </td>
+        <!-- INFO -->
+        <h3 class="font-medium text-gray-800 truncate">
+          {{ product.name }}
+        </h3>
 
-<td class="p-3 space-x-2">
-  <button
-    @click="saveProduct(product)"
-    class="text-orange-600 hover:underline text-sm"
-  >
-    Save
-  </button>
+        <p class="text-sm text-gray-500 line-clamp-2">
+          {{ product.description }}
+        </p>
 
-  <button
-    v-if="product.is_active"
-    @click="softDeleteFn(product)"
-    class="text-red-600 hover:underline text-sm"
-  >
-    Deactivate
-  </button>
+        <!-- META -->
+        <div class="flex justify-between items-center mt-3">
+          <span class="font-semibold text-orange-600">
+            ₹{{ product.price }}
+          </span>
 
-  <button
-    v-else
-    @click="restoreFn(product)"
-    class="text-green-600 hover:underline text-sm"
-  >
-    Restore
-  </button>
-</td>
+          <span
+            class="text-xs px-2 py-1 rounded-full"
+            :class="
+              product.is_active
+                ? 'bg-green-100 text-green-700'
+                : 'bg-gray-200 text-gray-600'
+            "
+          >
+            {{ product.is_active ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
 
-        </tr>
-      </tbody>
-    </table>
+        <!-- ACTIONS -->
+        <div class="flex justify-between items-center mt-4">
+          <button
+            @click="router.push(`/admin/products/${product.id}`)"
+            class="text-sm font-medium text-orange-600 hover:underline"
+          >
+            Edit
+          </button>
+
+          <button
+            @click="toggleActive(product)"
+            class="text-sm font-medium"
+            :class="
+              product.is_active
+                ? 'text-red-600 hover:underline'
+                : 'text-green-600 hover:underline'
+            "
+          >
+            {{ product.is_active ? 'Deactivate' : 'Activate' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

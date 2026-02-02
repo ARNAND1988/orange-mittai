@@ -16,6 +16,8 @@ class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[constr(min_length=6, max_length=72)] = None
 
 class UserRead(UserBase):
     id: int
