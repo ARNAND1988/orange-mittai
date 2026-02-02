@@ -16,6 +16,7 @@ from app.api.v1.profile import router as profile_router
 from app.api.v1.admin.product_admin import router as admin_product_router
 from app.api.v1.admin.order_admin import router as admin_order_router
 from app.api.v1.admin.tag_admin import router as admin_tag_router
+from app.api.v1.tags import router as tag_router
 
 # -------------------------------------------------
 # Logging MUST be first
@@ -74,6 +75,8 @@ app.include_router(profile_router, prefix="/api/v1/profile", tags=["profile"])
 app.include_router(admin_product_router, prefix="/api/v1/admin/products", tags=["admin"])
 app.include_router(admin_order_router, prefix="/api/v1/admin/orders", tags=["admin"])
 app.include_router(admin_tag_router, prefix="/api/v1/admin/tags", tags=["admin"])
+
+app.include_router(tag_router, prefix="/api/v1/tags", tags=["tags"])
 
 # -------------------------------------------------
 # Health check

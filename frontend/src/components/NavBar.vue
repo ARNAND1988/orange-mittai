@@ -1,189 +1,292 @@
 <script setup>
-import { ref, computed } from "vue"
-import { useRouter } from "vue-router"
+import { ref, computed, watch, onMounted } from "vue"
+import { useRouter, useRoute, RouterLink } from "vue-router"
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { useAuth } from "@/services/AuthService"
 import { useCart } from "@/services/CartService"
+import { useTagMenu } from "@/services/TagMenuService"
 
+/* ================= SERVICES ================= */
 const auth = useAuth()
 const router = useRouter()
+const route = useRoute()
 const { totalItems, showAddedToast, lastAddedProduct } = useCart()
 
-const dropdownOpen = ref(false)
+const { groupedTags, fetchTags } = useTagMenu()
+onMounted(fetchTags)
+
+/* ================= UI STATE ================= */
+const mobileMenuOpen = ref(false)
+const mobileAccountOpen = ref(false)
+const mobileAdminOpen = ref(false)
+const desktopDropdownOpen = ref(false)
 const showLogoutMessage = ref(false)
 
+/* ================= AUTH ================= */
 const isLoggedIn = computed(() => !!auth.token.value)
 const isAdmin = computed(() => auth.user.value?.is_admin === true)
+
 const userFullName = computed(() =>
   auth.user.value
     ? `${auth.user.value.first_name} ${auth.user.value.last_name}`
     : ""
 )
 
-const toggleDropdown = () => {
-  dropdownOpen.value = !dropdownOpen.value
+/* ================= ACTIONS ================= */
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+  mobileAccountOpen.value = false
+  mobileAdminOpen.value = false
 }
 
-// --------------------
-// CART HANDLER (✅ FIX)
-// --------------------
-const handleAddToCart = (product) => {
-  addToCart(product);
-};
+const toggleMobileAccount = () => {
+  if (!isLoggedIn.value) {
+    router.push("/auth")
+    return
+  }
+  mobileAccountOpen.value = !mobileAccountOpen.value
+  mobileMenuOpen.value = false
+  mobileAdminOpen.value = false
+}
 
-const handleLogout = () => {
-  auth.logout()
-  dropdownOpen.value = false
+const toggleMobileAdmin = () => {
+  mobileAdminOpen.value = !mobileAdminOpen.value
+  mobileMenuOpen.value = false
+  mobileAccountOpen.value = false
+}
 
+const toggleDesktopDropdown = () => {
+  desktopDropdownOpen.value = !desktopDropdownOpen.value
+}
+
+const handleLogout = async () => {
+  await auth.logout()
   showLogoutMessage.value = true
   setTimeout(() => (showLogoutMessage.value = false), 2500)
-
   router.push("/")
 }
+
+/* AUTO CLOSE */
+watch(() => route.fullPath, () => {
+  mobileMenuOpen.value = false
+  mobileAccountOpen.value = false
+  mobileAdminOpen.value = false
+  desktopDropdownOpen.value = false
+})
 </script>
 
-
 <template>
-  <nav class="w-full z-50 bg-white border-b border-gray-200 shadow-sm relative">
-    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
-      <!-- Brand -->
-      <router-link to="/" class="flex items-center">
-      <img
-        src="../assets/images/img.png"
-        class="h-20 w-auto max-w-[240px] object-contain scale-105 origin-left"
-        alt="Orange Mittai"
+  <!-- ================= MOBILE LOGO ================= -->
+  <nav class="md:hidden fixed top-0 inset-x-0 z-50 bg-white border-b">
+    <div class="flex justify-center py-3">
+      <RouterLink to="/">
+        <img src="../assets/images/logo.png" class="h-8" />
+      </RouterLink>
+    </div>
+  </nav>
+
+  <!-- ================= MOBILE SEARCH + HAMBURGER ================= -->
+  <nav class="md:hidden fixed top-[52px] inset-x-0 z-40 bg-white border-b">
+    <div class="relative flex items-center gap-3 px-4 py-3">
+      <button
+        @click="toggleMobileMenu"
+        class="menu-item text-gray-800"
+        aria-label="Open menu"
+      >
+        <font-awesome-icon icon="bars" size="lg" />
+      </button>
+
+      <input
+        type="text"
+        placeholder="Search sweets, snacks…"
+        class="flex-1 rounded-full border px-4 py-2 text-sm
+               focus:ring-2 focus:ring-orange-400"
       />
-<img
-  src="../assets/images/logo.png"
-  class="h-20 w-auto max-w-[240px] object-contain scale-105 origin-left"
-  alt="Orange Mittai"
-/>
 
-      </router-link>
-
-      <!-- Icons -->
-      <div class="flex items-center gap-6 text-gray-800 relative">
-
-        <!-- Admin links -->
-        <div
-          v-if="isAdmin"
-          class="flex items-center gap-4 ml-6 text-gray-800"
-        >
+      <div
+        v-if="mobileMenuOpen"
+        class="absolute left-4 top-full mt-2 w-64
+               bg-white border rounded-xl shadow-lg z-50 overflow-hidden"
+      >
+        <template v-if="groupedTags.PROMOTION?.length">
+          <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+            🔥 Promotions
+          </div>
           <RouterLink
-            to="/admin/products"
-            class="text-sm font-medium hover:text-orange-500 transition"
+            v-for="tag in groupedTags.PROMOTION"
+            :key="tag.id"
+            :to="`/tag/${tag.slug}`"
+            class="menu-item block"
           >
-            Admin Products
+            {{ tag.name }}
           </RouterLink>
+        </template>
 
+        <template v-if="groupedTags.LABEL?.length">
+          <div class="border-t my-1"></div>
+          <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+            🏷 Labels
+          </div>
           <RouterLink
-            to="/admin/orders"
-            class="text-sm font-medium hover:text-orange-500 transition"
+            v-for="tag in groupedTags.LABEL"
+            :key="tag.id"
+            :to="`/tag/${tag.slug}`"
+            class="menu-item block"
           >
-            Admin Orders
+            {{ tag.name }}
           </RouterLink>
-        </div>
+        </template>
+      </div>
+    </div>
+  </nav>
 
-        <!-- Logged OUT -->
-        <RouterLink
-          v-if="!isLoggedIn"
-          to="/auth"
-          class="hover:text-orange-500 transition"
-        >
-          <font-awesome-icon icon="user" size="lg" />
+  <!-- ================= DESKTOP NAVBAR ================= -->
+  <nav class="hidden md:block bg-white border-b shadow-sm">
+    <div class="max-w-7xl mx-auto flex justify-between items-center px-6 py-4">
+      <RouterLink to="/">
+        <img src="../assets/images/logo.png" class="h-20" />
+      </RouterLink>
+
+      <div v-if="isAdmin" class="flex gap-6">
+        <RouterLink to="/admin/products" class="menu-item text-base font-semibold">
+          Admin Products
         </RouterLink>
+        <RouterLink to="/admin/orders" class="menu-item text-base font-semibold">
+          Admin Orders
+        </RouterLink>
+      </div>
 
-        <!-- Logged IN -->
-        <div v-else class="relative flex items-center gap-2">
-          <span class="text-sm text-gray-600 hidden sm:block">
-            Welcome {{ userFullName }}
-          </span>
-
-          <button
-            @click="toggleDropdown"
-            class="hover:text-orange-500 transition focus:outline-none"
-          >
+      <div class="flex items-center gap-4 relative">
+        <div v-if="isLoggedIn" class="relative">
+          <button @click="toggleDesktopDropdown" class="menu-item">
             <font-awesome-icon icon="user" size="lg" />
           </button>
 
-          <!-- Dropdown -->
           <div
-            v-if="dropdownOpen"
-            class="absolute right-0 mt-2 w-40 bg-white
-                   text-gray-800 rounded-lg shadow-lg z-50 border"
+            v-if="desktopDropdownOpen"
+            class="absolute right-0 mt-2 w-44
+                   bg-white border rounded-xl shadow-lg z-50 overflow-hidden"
           >
-            <!-- Orders: CUSTOMER ONLY -->
+            <div class="px-4 py-2 font-semibold border-b">
+              {{ userFullName }}
+            </div>
+
+            <RouterLink to="/profile" class="menu-item block">
+              Profile
+            </RouterLink>
+
             <RouterLink
               v-if="!isAdmin"
               to="/orders"
-              class="block px-4 py-2 hover:bg-gray-100"
-              @click="dropdownOpen = false"
+              class="menu-item block"
             >
               Orders
             </RouterLink>
 
-            <RouterLink
-              to="/profile"
-              class="block px-4 py-2 hover:bg-gray-100"
-              @click="dropdownOpen = false"
-            >
-              Profile
-            </RouterLink>
-
             <button
               @click="handleLogout"
-              class="w-full text-left px-4 py-2 hover:bg-gray-100"
+              class="menu-item block text-red-600 w-full text-left"
             >
               Logout
             </button>
           </div>
         </div>
 
-        <!-- Cart (CUSTOMER ONLY) -->
-        <RouterLink
-          v-if="!isAdmin"
-          to="/cart"
-          class="relative hover:text-orange-500 transition"
-        >
-          <font-awesome-icon icon="cart-shopping" size="lg" />
-
-          <!-- Cart badge -->
-          <span
-            v-if="totalItems > 0"
-            class="absolute -top-2 -right-2
-                   bg-orange-500 text-white
-                   text-[10px] font-bold
-                   rounded-full px-1.5 py-0.5
-                   min-w-[18px] text-center"
-          >
-            {{ totalItems }}
-          </span>
+        <RouterLink v-else to="/auth" class="menu-item">
+          <font-awesome-icon icon="user" size="lg" />
         </RouterLink>
-
       </div>
     </div>
   </nav>
 
-  <!-- Logout confirmation -->
-  <div
-    v-if="showLogoutMessage"
-    class="fixed top-20 left-1/2 -translate-x-1/2 z-[60]
-           bg-green-100 text-green-800
-           px-4 py-2 rounded-lg shadow-md
-           text-sm font-medium"
+  <!-- ================= MOBILE BOTTOM NAV ================= -->
+  <nav
+    class="md:hidden fixed bottom-2 left-2 right-2 z-50
+           bg-white/80 backdrop-blur-lg
+           border rounded-2xl shadow-lg"
   >
-    You’ve logged out successfully 👋
-  </div>
+    <div class="relative flex justify-around py-2 text-xs text-gray-800">
 
-  <!-- ADD-TO-CART TOAST -->
+      <RouterLink to="/" class="menu-item flex flex-col items-center">
+        <font-awesome-icon icon="house" size="lg" />
+        Home
+      </RouterLink>
+
+      <button
+        v-if="isAdmin"
+        @click="toggleMobileAdmin"
+        class="menu-item flex flex-col items-center"
+      >
+        <font-awesome-icon icon="user-shield" size="lg" />
+        Admin
+      </button>
+
+      <button
+        @click="toggleMobileAccount"
+        class="menu-item flex flex-col items-center"
+      >
+        <font-awesome-icon icon="user" size="lg" />
+        {{ isLoggedIn ? "Account" : "Login" }}
+      </button>
+
+      <div
+        v-if="mobileAdminOpen"
+        class="absolute bottom-14 left-1/2 -translate-x-1/2
+               w-44 bg-white border rounded-xl shadow-lg z-50 overflow-hidden"
+      >
+        <RouterLink to="/admin/products" class="menu-item block">
+          Admin Products
+        </RouterLink>
+        <RouterLink to="/admin/orders" class="menu-item block">
+          Admin Orders
+        </RouterLink>
+      </div>
+
+      <div
+        v-if="mobileAccountOpen && isLoggedIn"
+        class="absolute right-4 bottom-14 w-44
+               bg-white border rounded-xl shadow-lg z-50 overflow-hidden"
+      >
+        <div class="px-4 py-2 font-semibold border-b">
+          {{ userFullName }}
+        </div>
+
+        <RouterLink to="/profile" class="menu-item block">
+          Profile
+        </RouterLink>
+
+        <RouterLink
+          v-if="!isAdmin"
+          to="/orders"
+          class="menu-item block"
+        >
+          Orders
+        </RouterLink>
+
+        <button
+          @click="handleLogout"
+          class="menu-item block text-red-600 w-full text-left"
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================= TOASTS ================= -->
   <div
     v-if="showAddedToast"
-    class="fixed top-20 left-1/2 -translate-x-1/2 z-[60]
-           bg-green-100 text-green-800
-           px-4 py-2 rounded-lg shadow-md
-           text-sm font-medium"
+    class="fixed top-24 left-1/2 -translate-x-1/2 z-[60]
+           bg-green-100 text-green-800 px-4 py-2 rounded-xl text-sm"
   >
     ✅ {{ lastAddedProduct }} added to cart
   </div>
-</template>
 
+  <div
+    v-if="showLogoutMessage"
+    class="fixed top-24 left-1/2 -translate-x-1/2 z-[60]
+           bg-green-100 text-green-800 px-4 py-2 rounded-xl text-sm"
+  >
+    You’ve logged out successfully 👋
+  </div>
+</template>

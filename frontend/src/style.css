@@ -17,3 +17,11 @@
 .product-card {
   @apply transition hover:-translate-y-0.5 hover:shadow-md;
 }
+
+/* Universal menu interaction */
+.menu-item {
+  @apply px-3 py-2 rounded-xl
+         transition duration-150 ease-in-out
+         hover:bg-orange-50 hover:text-orange-600
+         active:bg-orange-100;
+}
