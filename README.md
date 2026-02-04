@@ -412,3 +412,198 @@ gcloud alpha sql connect orange-mittai-instance \
 --user=$(gcloud config get account) \
 --auto-iam-authn
 
+
+
+# Google Cloud CDN + HTTPS Load Balancer (CLI Setup)
+
+This document contains a **clean, reproducible command sequence** to create a **Global HTTPS Load Balancer with Cloud CDN** in front of an **existing Cloud Storage bucket**.
+
+Target CDN domain:
+
+```
+cdn.orangemittai.nl
+```
+
+Bucket (already exists):
+
+```
+gs://orange-mittai-store
+```
+
+---
+
+## 0. Prerequisites
+
+* DNS A record:
+
+  ```
+  cdn.orangemittai.nl → LOAD_BALANCER_IP
+  ```
+* Bucket exists and contains objects
+* `gcloud` authenticated
+
+Set project:
+
+```bash
+gcloud config set project orange-mittai
+```
+
+---
+
+## 1. Reserve a Global Static IP (recommended)
+
+```bash
+gcloud compute addresses create cdn-ip --global
+```
+
+Get the IP:
+
+```bash
+gcloud compute addresses describe cdn-ip --global \
+  --format="get(address)"
+```
+
+👉 Use this IP in STRATO for the A record of `cdn.orangemittai.nl`.
+
+---
+
+## 2. Create Backend Bucket (Cloud CDN enabled)
+
+```bash
+gcloud compute backend-buckets create orange-mittai-backend \
+  --gcs-bucket-name=orange-mittai-store \
+  --enable-cdn
+```
+
+---
+
+## 3. Create URL Map
+
+```bash
+gcloud compute url-maps create cdn-url-map \
+  --default-backend-bucket=orange-mittai-backend
+```
+
+---
+
+## 4. Create Google‑Managed SSL Certificate
+
+```bash
+gcloud compute ssl-certificates create cdn-orangemittai-cert \
+  --domains=cdn.orangemittai.nl
+```
+
+> Status will be **PROVISIONING** initially and become **ACTIVE** once DNS is visible.
+
+---
+
+## 5. Create HTTPS Target Proxy
+
+```bash
+gcloud compute target-https-proxies create cdn-https-proxy \
+  --url-map=cdn-url-map \
+  --ssl-certificates=cdn-orangemittai-cert
+```
+
+---
+
+## 6. Create Global Forwarding Rule (Port 443)
+
+```bash
+gcloud compute forwarding-rules create cdn-https-fr \
+  --global \
+  --target-https-proxy=cdn-https-proxy \
+  --ports=443 \
+  --address=cdn-ip
+```
+
+This completes the HTTPS Load Balancer.
+
+---
+
+## 7. Make Bucket Public (if using public assets)
+
+```bash
+gsutil iam ch allUsers:objectViewer gs://orange-mittai-store
+```
+
+> Skip this step if you plan to use **signed URLs**.
+
+---
+
+## 8. Verification
+
+### DNS
+
+```bash
+dig @8.8.8.8 cdn.orangemittai.nl A
+```
+
+### SSL Certificate
+
+```bash
+gcloud compute ssl-certificates describe cdn-orangemittai-cert
+```
+
+Expected:
+
+```
+status: ACTIVE
+```
+
+---
+
+## 9. Test CDN End‑to‑End
+
+```bash
+curl -I https://cdn.orangemittai.nl/products/<object>.png
+```
+
+Expected headers:
+
+```
+HTTP/2 200
+via: 1.1 google
+cache-control: public
+```
+
+---
+
+## 10. Final URL Format
+
+```
+https://cdn.orangemittai.nl/<object-path>
+```
+
+Example:
+
+```
+https://cdn.orangemittai.nl/products/e5d42e76-3d15-412a-95b9-0f52355687da.png
+```
+
+---
+
+## Notes
+
+* DNS **must** point to the forwarding‑rule IP
+* Only **one hostname** should be used consistently
+* Cloud CDN respects `Cache-Control` headers from the bucket
+
+---
+
+## Cleanup (optional)
+
+To delete everything **except the storage bucket**:
+
+```bash
+gcloud compute forwarding-rules delete cdn-https-fr --global
+gcloud compute target-https-proxies delete cdn-https-proxy
+gcloud compute ssl-certificates delete cdn-orangemittai-cert
+gcloud compute url-maps delete cdn-url-map
+gcloud compute backend-buckets delete orange-mittai-backend
+gcloud compute addresses delete cdn-ip --global
+```
+
+---
+
+✅ This setup is production‑grade and matches Google Cloud best practices for CDN + GCS.

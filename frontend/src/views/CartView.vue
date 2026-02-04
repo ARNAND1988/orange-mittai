@@ -1,8 +1,11 @@
 <script setup>
-import { useCart } from "@/services/CartService"
+import { ref } from "vue"
 import { useRouter } from "vue-router"
+import { useCart } from "@/services/CartService"
+import { useAuth } from "@/services/AuthService"
 
 const router = useRouter()
+const { isAuthenticated } = useAuth()
 
 const {
   cartItems,
@@ -11,36 +14,37 @@ const {
   totalPrice,
 } = useCart()
 
-// Price formatter → € with 2 decimals
-const formatPrice = (value) => {
-  return Number(value).toFixed(2)
-}
+const showGuestPrompt = ref(false)
 
-// Quantity controls (1–5)
+const formatPrice = (v) => Number(v).toFixed(2)
+
 const increaseQty = (item) => {
-  if (item.quantity < 5) {
-    updateQuantity(item.id, item.quantity + 1)
-  }
+  if (item.quantity < 5) updateQuantity(item.id, item.quantity + 1)
+}
+const decreaseQty = (item) => {
+  if (item.quantity > 1) updateQuantity(item.id, item.quantity - 1)
 }
 
-const decreaseQty = (item) => {
-  if (item.quantity > 1) {
-    updateQuantity(item.id, item.quantity - 1)
-  }
-}
+const isLoggedIn = () => !!localStorage.getItem("user")
 
 const goToCheckout = () => {
-  router.push("/checkout")
+  if (isLoggedIn()) {
+    router.push("/checkout")
+  } else {
+    showGuestPrompt.value = true
+  }
+}
+
+const continueAsGuest = () => {
+  router.push("/checkout?guest=true")
 }
 </script>
 
 <template>
   <div class="max-w-5xl mx-auto py-8">
-    <h1 class="text-2xl font-semibold text-gray-800 mb-6">
-      My Cart
-    </h1>
+    <h1 class="text-2xl font-semibold mb-6">My Cart</h1>
 
-    <!-- Empty cart -->
+    <!-- EMPTY -->
     <div
       v-if="cartItems.length === 0"
       class="bg-white border border-orange-200 rounded-xl shadow-sm p-6"
@@ -56,58 +60,39 @@ const goToCheckout = () => {
         Browse products →
       </RouterLink>
     </div>
-
-    <!-- Cart items -->
+    <!-- CART ITEMS -->
     <div v-else class="space-y-4">
-      <!-- Cart item -->
       <div
         v-for="item in cartItems"
         :key="item.id"
-        class="flex items-center justify-between
-               bg-white border border-orange-200
-               rounded-xl p-4"
+        class="flex gap-4 bg-white border rounded-xl p-4"
       >
-        <!-- Product info -->
-        <div>
-          <h3 class="font-medium text-gray-800">
-            {{ item.name }}
-          </h3>
+        <!-- IMAGE -->
+        <img
+          :src="item.image"
+          class="w-24 h-24 object-cover rounded-lg"
+        />
+
+        <!-- INFO -->
+        <div class="flex-1">
+          <h3 class="font-medium">{{ item.name }}</h3>
           <p class="text-sm text-gray-500">
             €{{ formatPrice(item.price) }} each
           </p>
+
+          <!-- QTY -->
+          <div class="flex items-center gap-2 mt-2">
+            <button @click="decreaseQty(item)" class="px-2 bg-gray-200 rounded">−</button>
+            <span>{{ item.quantity }}</span>
+            <button @click="increaseQty(item)" class="px-2 bg-gray-200 rounded">+</button>
+          </div>
         </div>
 
-        <!-- Quantity -->
-        <div class="flex items-center gap-2">
-          <button
-            @click="decreaseQty(item)"
-            :disabled="item.quantity <= 1"
-            class="px-2 py-1 rounded bg-gray-200
-                   disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            −
-          </button>
-
-          <span class="w-6 text-center font-medium">
-            {{ item.quantity }}
-          </span>
-
-          <button
-            @click="increaseQty(item)"
-            :disabled="item.quantity >= 5"
-            class="px-2 py-1 rounded bg-gray-200
-                   disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            +
-          </button>
-        </div>
-
-        <!-- Line total -->
+        <!-- TOTAL -->
         <div class="text-right">
-          <p class="font-medium text-gray-800">
+          <p class="font-semibold">
             €{{ formatPrice(item.price * item.quantity) }}
           </p>
-
           <button
             @click="removeFromCart(item.id)"
             class="text-sm text-red-500 hover:underline"
@@ -117,33 +102,47 @@ const goToCheckout = () => {
         </div>
       </div>
 
-      <!-- Total + Checkout -->
-      <div
-        class="flex justify-between items-center
-               bg-orange-50 border border-orange-200
-               rounded-xl p-4 mt-6"
-      >
-        <div>
-          <span class="block font-semibold text-gray-800">
-            Total
-          </span>
-          <span class="block text-sm text-gray-500">
-            Taxes calculated at checkout
-          </span>
-        </div>
-
-        <div class="text-right space-y-2">
-          <p class="font-semibold text-orange-600 text-lg">
+      <!-- TOTAL -->
+      <div class="flex justify-between items-center bg-orange-50 p-4 rounded-xl">
+        <span class="font-semibold">Total</span>
+        <div class="text-right">
+          <p class="text-lg font-semibold text-orange-600">
             €{{ formatPrice(totalPrice) }}
           </p>
-
           <button
             @click="goToCheckout"
-            class="bg-orange-500 hover:bg-orange-600
-                   text-white px-6 py-2 rounded-lg
-                   font-medium transition"
+            class="mt-2 bg-orange-500 text-white px-6 py-2 rounded-lg"
           >
             Proceed to Checkout →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GUEST PROMPT MODAL -->
+    <div
+      v-if="showGuestPrompt"
+      class="fixed inset-0 bg-black/40 flex items-center justify-center"
+    >
+      <div class="bg-white rounded-xl p-6 max-w-sm w-full">
+        <h3 class="text-lg font-semibold mb-2">Continue Checkout</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          Login to save your details, or continue as a guest.
+        </p>
+
+        <div class="space-y-3">
+          <button
+            @click="router.push('/auth')"
+            class="w-full border px-4 py-2 rounded-lg"
+          >
+            Login
+          </button>
+
+          <button
+            @click="continueAsGuest"
+            class="w-full bg-orange-600 text-white px-4 py-2 rounded-lg"
+          >
+            Continue as Guest
           </button>
         </div>
       </div>

@@ -11,6 +11,11 @@ const safeParse = (value) => {
   }
 }
 
+// Check if user is logged in
+const isAuthenticated = () => {
+  return !!token.value && !!user.value
+}
+
 const token = ref(localStorage.getItem("access_token"))
 const user = ref(
   safeParse(localStorage.getItem("user"))
@@ -36,8 +41,8 @@ const login = (data) => {
   token.value = data.access_token
   user.value = data.user ?? null
 
-  const { clearCart } = useCart()
-  clearCart()
+//  const { clearCart } = useCart()
+//  clearCart()
 }
 
 // logout
@@ -58,5 +63,6 @@ export function useAuth() {
     user,
     login,
     logout,
+    isAuthenticated,
   }
 }

@@ -11,6 +11,7 @@ from app.schemas.product_schema import (
 )
 from app.utils.auth import get_current_user
 from app.models.user import User
+from typing import Optional
 
 router = APIRouter()
 

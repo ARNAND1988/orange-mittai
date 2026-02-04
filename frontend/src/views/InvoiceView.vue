@@ -45,7 +45,7 @@ const generatePDF = async () => {
     ...items.map((item) => [
       item.name,
       item.qty,
-      { text: `₹${item.price * item.qty}`, alignment: "right" },
+      { text: `€${item.price * item.qty}`, alignment: "right" },
     ]),
   ]
 
@@ -130,11 +130,11 @@ const generatePDF = async () => {
             table: {
               widths: ["*", "auto"],
               body: [
-                ["Subtotal", `₹${subtotal}`],
-                ["Shipping", `₹${shipping}`],
+                ["Subtotal", `€${subtotal}`],
+                ["Shipping", `€${shipping}`],
                 [
                   { text: "Total", bold: true },
-                  { text: `₹${total}`, bold: true },
+                  { text: `€${total}`, bold: true },
                 ],
               ],
             },

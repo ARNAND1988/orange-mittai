@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, onMounted, computed } from "vue"
 import { useRouter } from "vue-router"
 import {
   fetchProductsForAdmin,
@@ -10,22 +10,79 @@ import {
 const router = useRouter()
 const products = ref([])
 
+/* -----------------------
+   MODAL STATE
+------------------------ */
+const showConfirm = ref(false)
+const selectedProduct = ref(null)
+const confirmLoading = ref(false)
+
+/* 🔥 mode: 'activate' | 'deactivate' */
+const actionMode = ref("deactivate")
+
+/* -----------------------
+   COMPUTED
+------------------------ */
+const modalTitle = computed(() =>
+  actionMode.value === "deactivate"
+    ? "Deactivate product?"
+    : "Activate product?"
+)
+
+const modalMessage = computed(() =>
+  actionMode.value === "deactivate"
+    ? "will no longer be visible in the store."
+    : "will become visible in the store."
+)
+
+const confirmButtonText = computed(() =>
+  actionMode.value === "deactivate"
+    ? "Deactivate"
+    : "Activate"
+)
+
+const confirmButtonClass = computed(() =>
+  actionMode.value === "deactivate"
+    ? "bg-red-600 hover:bg-red-700"
+    : "bg-green-600 hover:bg-green-700"
+)
+
+/* -----------------------
+   FETCH
+------------------------ */
 const fetchProducts = async () => {
   products.value = await fetchProductsForAdmin()
 }
 
-const toggleActive = async (product) => {
-  if (product.is_active) {
-    if (!confirm("Deactivate this product?")) return
-    await softDelete(product.id)
-    product.is_active = false
-  } else {
-    await restore(product.id)
-    product.is_active = true
-  }
+onMounted(fetchProducts)
+
+/* -----------------------
+   ACTIONS
+------------------------ */
+const requestAction = (product) => {
+  selectedProduct.value = product
+  actionMode.value = product.is_active ? "deactivate" : "activate"
+  showConfirm.value = true
 }
 
-onMounted(fetchProducts)
+const confirmAction = async () => {
+  if (!selectedProduct.value) return
+  confirmLoading.value = true
+
+  try {
+    if (actionMode.value === "deactivate") {
+      await softDelete(selectedProduct.value.id)
+      selectedProduct.value.is_active = false
+    } else {
+      await restore(selectedProduct.value.id)
+      selectedProduct.value.is_active = true
+    }
+  } finally {
+    confirmLoading.value = false
+    showConfirm.value = false
+    selectedProduct.value = null
+  }
+}
 </script>
 
 <template>
@@ -73,7 +130,7 @@ onMounted(fetchProducts)
         <!-- META -->
         <div class="flex justify-between items-center mt-3">
           <span class="font-semibold text-orange-600">
-            ₹{{ product.price }}
+            €{{ product.price }}
           </span>
 
           <span
@@ -98,7 +155,7 @@ onMounted(fetchProducts)
           </button>
 
           <button
-            @click="toggleActive(product)"
+            @click="requestAction(product)"
             class="text-sm font-medium"
             :class="
               product.is_active
@@ -111,5 +168,67 @@ onMounted(fetchProducts)
         </div>
       </div>
     </div>
+
+    <!-- CONFIRM MODAL -->
+    <div
+      v-if="showConfirm"
+      class="fixed inset-0 z-50 flex items-center justify-center
+             bg-black/40 backdrop-blur-sm"
+    >
+      <div
+        class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6
+               animate-scale-in"
+      >
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">
+          {{ modalTitle }}
+        </h3>
+
+        <p class="text-sm text-gray-600 mb-4">
+          <span class="font-medium text-gray-800">
+            {{ selectedProduct?.name }}
+          </span>
+          {{ modalMessage }}
+        </p>
+
+        <div class="flex justify-end gap-3">
+          <button
+            @click="showConfirm = false"
+            class="px-4 py-2 rounded-lg text-sm
+                   border border-gray-300 text-gray-700
+                   hover:bg-gray-100"
+            :disabled="confirmLoading"
+          >
+            Cancel
+          </button>
+
+          <button
+            @click="confirmAction"
+            class="px-4 py-2 rounded-lg text-sm text-white
+                   disabled:opacity-50"
+            :class="confirmButtonClass"
+            :disabled="confirmLoading"
+          >
+            {{ confirmLoading ? "Please wait..." : confirmButtonText }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.15s ease-out;
+}
+</style>

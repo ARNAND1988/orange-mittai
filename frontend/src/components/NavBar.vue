@@ -10,8 +10,8 @@ import { useTagMenu } from "@/services/TagMenuService"
 const auth = useAuth()
 const router = useRouter()
 const route = useRoute()
-const { totalItems, showAddedToast, lastAddedProduct } = useCart()
 
+const { totalItems, showAddedToast, lastAddedProduct } = useCart()
 const { groupedTags, fetchTags } = useTagMenu()
 onMounted(fetchTags)
 
@@ -66,7 +66,7 @@ const handleLogout = async () => {
   router.push("/")
 }
 
-/* AUTO CLOSE */
+/* AUTO CLOSE ON ROUTE CHANGE */
 watch(() => route.fullPath, () => {
   mobileMenuOpen.value = false
   mobileAccountOpen.value = false
@@ -90,8 +90,8 @@ watch(() => route.fullPath, () => {
     <div class="relative flex items-center gap-3 px-4 py-3">
       <button
         @click="toggleMobileMenu"
-        class="menu-item text-gray-800"
-        aria-label="Open menu"
+        class="menu-item"
+        aria-label="Menu"
       >
         <font-awesome-icon icon="bars" size="lg" />
       </button>
@@ -103,6 +103,7 @@ watch(() => route.fullPath, () => {
                focus:ring-2 focus:ring-orange-400"
       />
 
+      <!-- TAG MENU -->
       <div
         v-if="mobileMenuOpen"
         class="absolute left-4 top-full mt-2 w-64
@@ -147,16 +148,35 @@ watch(() => route.fullPath, () => {
         <img src="../assets/images/logo.png" class="h-20" />
       </RouterLink>
 
-      <div v-if="isAdmin" class="flex gap-6">
-        <RouterLink to="/admin/products" class="menu-item text-base font-semibold">
+      <!-- ADMIN LINKS -->
+      <div v-if="isAdmin" class="flex gap-8">
+        <RouterLink to="/admin/products" class="menu-item text-lg font-semibold">
           Admin Products
         </RouterLink>
-        <RouterLink to="/admin/orders" class="menu-item text-base font-semibold">
+        <RouterLink to="/admin/orders" class="menu-item text-lg font-semibold">
           Admin Orders
         </RouterLink>
       </div>
 
+      <!-- USER -->
       <div class="flex items-center gap-4 relative">
+        <!-- CART (ONLY USER) -->
+        <RouterLink
+          v-if="!isAdmin"
+          to="/cart"
+          class="relative menu-item"
+        >
+          <font-awesome-icon icon="cart-shopping" size="lg" />
+          <span
+            v-if="totalItems > 0"
+            class="absolute -top-2 -right-2 bg-orange-500
+                   text-white text-[10px] font-bold
+                   rounded-full px-1.5 min-w-[18px] text-center"
+          >
+            {{ totalItems }}
+          </span>
+        </RouterLink>
+
         <div v-if="isLoggedIn" class="relative">
           <button @click="toggleDesktopDropdown" class="menu-item">
             <font-awesome-icon icon="user" size="lg" />
@@ -202,8 +222,9 @@ watch(() => route.fullPath, () => {
   <!-- ================= MOBILE BOTTOM NAV ================= -->
   <nav
     class="md:hidden fixed bottom-2 left-2 right-2 z-50
-           bg-white/80 backdrop-blur-lg
-           border rounded-2xl shadow-lg"
+           bg-white/60 backdrop-blur-xl
+           border border-white/40
+           rounded-2xl shadow-lg"
   >
     <div class="relative flex justify-around py-2 text-xs text-gray-800">
 
@@ -212,6 +233,25 @@ watch(() => route.fullPath, () => {
         Home
       </RouterLink>
 
+      <!-- CART (USER ONLY) -->
+      <RouterLink
+        v-if="!isAdmin"
+        to="/cart"
+        class="menu-item flex flex-col items-center relative"
+      >
+        <font-awesome-icon icon="cart-shopping" size="lg" />
+        Cart
+        <span
+          v-if="totalItems > 0"
+          class="absolute top-0 right-3 bg-orange-500
+                 text-white text-[10px] font-bold
+                 rounded-full px-1 min-w-[16px]"
+        >
+          {{ totalItems }}
+        </span>
+      </RouterLink>
+
+      <!-- ADMIN -->
       <button
         v-if="isAdmin"
         @click="toggleMobileAdmin"
@@ -221,6 +261,7 @@ watch(() => route.fullPath, () => {
         Admin
       </button>
 
+      <!-- ACCOUNT / LOGIN -->
       <button
         @click="toggleMobileAccount"
         class="menu-item flex flex-col items-center"
@@ -229,10 +270,11 @@ watch(() => route.fullPath, () => {
         {{ isLoggedIn ? "Account" : "Login" }}
       </button>
 
+      <!-- ADMIN DROPDOWN -->
       <div
         v-if="mobileAdminOpen"
         class="absolute bottom-14 left-1/2 -translate-x-1/2
-               w-44 bg-white border rounded-xl shadow-lg z-50 overflow-hidden"
+               w-44 bg-white border rounded-xl shadow-lg z-50"
       >
         <RouterLink to="/admin/products" class="menu-item block">
           Admin Products
@@ -242,10 +284,11 @@ watch(() => route.fullPath, () => {
         </RouterLink>
       </div>
 
+      <!-- ACCOUNT DROPDOWN -->
       <div
         v-if="mobileAccountOpen && isLoggedIn"
         class="absolute right-4 bottom-14 w-44
-               bg-white border rounded-xl shadow-lg z-50 overflow-hidden"
+               bg-white border rounded-xl shadow-lg z-50"
       >
         <div class="px-4 py-2 font-semibold border-b">
           {{ userFullName }}

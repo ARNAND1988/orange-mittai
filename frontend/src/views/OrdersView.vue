@@ -74,7 +74,7 @@
         <div class="text-sm text-gray-700">
           {{ order.items.length }} items ·
           <span class="font-medium">
-            ₹{{ order.total_amount }}
+            €{{ order.total_amount }}
           </span>
         </div>
 
@@ -119,7 +119,7 @@
               {{ item.product_name }} × {{ item.quantity }}
             </span>
             <span>
-              ₹{{ item.price * item.quantity }}
+              €{{ item.price * item.quantity }}
             </span>
           </div>
 

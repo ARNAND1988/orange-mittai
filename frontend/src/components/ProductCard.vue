@@ -53,7 +53,7 @@
 <!-- 💰 PRICE + CART -->
 <div class="flex items-center justify-between pt-2">
   <span class="font-semibold text-orange-600 text-sm">
-    ₹{{ product.price }}
+    €{{ product.price }}
   </span>
 
   <button

@@ -12,6 +12,7 @@ import {
   faClipboardList,
   faHouse,
   faBars,
+  faCartShopping,
 } from "@fortawesome/free-solid-svg-icons"
 
 import router from './router' // import router
@@ -23,7 +24,8 @@ library.add(
   faBoxesStacked,
   faClipboardList,
   faHouse,
-  faBars
+  faBars,
+  faCartShopping
 )
 
 

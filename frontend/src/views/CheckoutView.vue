@@ -1,27 +1,35 @@
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
-import { useCart } from "@/services/CartService";
-import { createOrder } from "@/services/orderService";
-import { getAddresses, createAddress } from "@/services/profileService";
+import { ref, computed, onMounted } from "vue"
+import { useRouter, useRoute } from "vue-router"
+import { useCart } from "@/services/CartService"
+import { createOrder } from "@/services/orderService"
+import { getAddresses, createAddress } from "@/services/profileService"
+import { useAuth } from "@/services/AuthService"
+const { isAuthenticated } = useAuth()
 
 /* =====================
-   STATE
+   ROUTER / AUTH
 ===================== */
+const router = useRouter()
+const route = useRoute()
+console.log(route.query.guest)
+const isGuest = computed(() => route.query.guest === "true")
 
-const router = useRouter();
-const { clearCart } = useCart();
-
+/* =====================
+   CART
+===================== */
+const { clearCart } = useCart()
 const cartItems = ref(
   JSON.parse(localStorage.getItem("cart") || "[]")
-);
+)
 
-const addresses = ref([]);
-const selectedAddressId = ref(null);
-
-const showNewAddress = ref(false);
-const addressError = ref("");
-const loading = ref(false);
+/* =====================
+   ADDRESS (LOGGED IN)
+===================== */
+const addresses = ref([])
+const selectedAddressId = ref(null)
+const showNewAddress = ref(false)
+const addressError = ref("")
 
 const newAddress = ref({
   label: "Home",
@@ -35,45 +43,59 @@ const newAddress = ref({
   postal_code: "",
   country: "",
   is_default: false,
-});
+})
+
+/* =====================
+   GUEST INFO
+===================== */
+const guestInfo = ref({
+  name: "",
+  email: "",
+  phone: "",
+})
+
+/* =====================
+   UI STATE
+===================== */
+const loading = ref(false)
 
 /* =====================
    LIFECYCLE
 ===================== */
-
 onMounted(async () => {
-  addresses.value = await getAddresses();
-
-  // auto-select default address
-  const defaultAddr = addresses.value.find(a => a.is_default);
-  if (defaultAddr) {
-    selectedAddressId.value = defaultAddr.id;
+  console.log("Guest",!isGuest.value, isAuthenticated )
+  if (!isGuest.value && isAuthenticated) {
+    addresses.value = await getAddresses()
+    const defaultAddr = addresses.value.find(a => a.is_default)
+    if (defaultAddr) selectedAddressId.value = defaultAddr.id
   }
-});
+})
 
 /* =====================
    COMPUTED
 ===================== */
-
 const cartTotal = computed(() =>
   cartItems.value.reduce(
     (sum, i) => sum + i.price * i.quantity,
     0
   )
-);
+)
 
-const formatPrice = (value) =>
-  Number(value).toFixed(2);
+const formatPrice = (v) => Number(v).toFixed(2)
 
 /* =====================
-   ADDRESS
+   VALIDATION
 ===================== */
+const validateGuest = () => {
+  if (!guestInfo.value.name || !guestInfo.value.email || !guestInfo.value.phone) {
+    alert("Please fill guest name, email, and phone")
+    return false
+  }
+  return validateAddress()
+}
 
-const validateNewAddress = () => {
-  addressError.value = "";
-
+const validateAddress = () => {
   const required = [
-    "label",
     "name",
     "phone",
     "house_number",
@@ -82,55 +104,66 @@ const validateNewAddress = () => {
     "state",
     "postal_code",
     "country",
-  ];
-
-  for (const field of required) {
-    if (!newAddress.value[field]?.trim()) {
-      addressError.value = "Please fill all required address fields.";
-      return false;
+  ]
+  for (const f of required) {
+    if (!newAddress.value[f]?.trim()) {
+      addressError.value = "Please fill all required address fields."
+      return false
     }
   }
-  return true;
-};
-
-const saveNewAddress = async () => {
-  if (!validateNewAddress()) return;
-
-  const created = await createAddress(newAddress.value);
-  addresses.value = await getAddresses();
-
-  selectedAddressId.value = created.id;
-  showNewAddress.value = false;
-};
+  addressError.value = ""
+  return true
+}
 
 /* =====================
-   ORDER
+   ADDRESS SAVE (USER)
 ===================== */
+const saveNewAddress = async () => {
+  if (!validateAddress()) return
 
+  const created = await createAddress(newAddress.value)
+  addresses.value = await getAddresses()
+  selectedAddressId.value = created.id
+  showNewAddress.value = false
+}
+
+/* =====================
+   PLACE ORDER
+===================== */
 const placeOrder = async () => {
-  if (!selectedAddressId.value) {
-    alert("Please select or add a delivery address");
-    return;
+  if (cartItems.value.length === 0) return
+
+  if (isGuest.value) {
+    if (!validateGuest()) return
+  } else {
+    if (!selectedAddressId.value) {
+      alert("Please select or add an address")
+      return
+    }
   }
 
-  loading.value = true;
+  loading.value = true
 
   const payload = {
     items: cartItems.value.map(i => ({
       product_id: i.productId ?? i.id,
       quantity: Number(i.quantity),
     })),
-    address_id: selectedAddressId.value,
     payment_method: "COD",
-  };
+    guest: isGuest.value,
+    guest_info: isGuest.value ? guestInfo.value : undefined,
+    address: isGuest.value ? newAddress.value : undefined,
+    address_id: !isGuest.value ? selectedAddressId.value : undefined,
+  }
 
-  await createOrder(payload);
-
-  clearCart();
-  router.push("/orders");
-
-  loading.value = false;
-};
+  try {
+    await createOrder(payload)
+    clearCart()
+    router.push("/orders")
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <template>
@@ -138,7 +171,7 @@ const placeOrder = async () => {
 
     <h1 class="text-2xl font-semibold">Checkout</h1>
 
-    <!-- EMPTY CART -->
+    <!-- EMPTY -->
     <div
       v-if="cartItems.length === 0"
       class="p-6 text-center text-gray-500 bg-white rounded-lg"
@@ -148,13 +181,26 @@ const placeOrder = async () => {
 
     <div v-else class="space-y-6">
 
-      <!-- ================= ADDRESSES ================= -->
-      <div class="bg-white p-6 rounded-xl border border-orange-200">
-        <h2 class="text-lg font-semibold mb-4">
-          Delivery Address
-        </h2>
+      <!-- ================= GUEST DETAILS ================= -->
+      <div
+        v-if="isGuest"
+        class="bg-white p-6 rounded-xl border border-orange-200"
+      >
+        <h2 class="text-lg font-semibold mb-4">Guest Details</h2>
 
-        <div v-if="addresses.length">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input v-model="guestInfo.name" placeholder="Full Name" class="border rounded-lg px-3 py-2" />
+          <input v-model="guestInfo.email" placeholder="Email" class="border rounded-lg px-3 py-2" />
+          <input v-model="guestInfo.phone" placeholder="Phone" class="border rounded-lg px-3 py-2" />
+        </div>
+      </div>
+
+      <!-- ================= ADDRESS ================= -->
+      <div class="bg-white p-6 rounded-xl border border-orange-200">
+        <h2 class="text-lg font-semibold mb-4">Delivery Address</h2>
+
+        <!-- LOGGED IN ADDRESS LIST -->
+        <div v-if="!isGuest && addresses.length">
           <label
             v-for="addr in addresses"
             :key="addr.id"
@@ -182,30 +228,27 @@ const placeOrder = async () => {
               {{ addr.city }} – {{ addr.postal_code }}
             </p>
           </label>
+
+          <button
+            class="mt-2 text-orange-600 text-sm hover:underline"
+            @click="showNewAddress = !showNewAddress"
+          >
+            {{ showNewAddress ? "Cancel" : "+ Add new address" }}
+          </button>
         </div>
 
-        <button
-          class="mt-2 text-orange-600 text-sm hover:underline"
-          @click="showNewAddress = !showNewAddress"
-        >
-          {{ showNewAddress ? "Cancel" : "+ Add new address" }}
-        </button>
-
-        <!-- ================= ADD NEW ADDRESS ================= -->
-        <div v-if="showNewAddress" class="mt-4 border-t pt-4">
-          <h3 class="font-medium mb-3">New Address</h3>
-
+        <!-- ADDRESS FORM (GUEST OR NEW) -->
+        <div v-if="isGuest || showNewAddress" class="mt-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input v-model="newAddress.label" placeholder="Label" class="border rounded-lg px-3 py-2" />
-            <input v-model="newAddress.name" placeholder="Full Name" class="border rounded-lg px-3 py-2" />
-            <input v-model="newAddress.phone" placeholder="Phone" class="border rounded-lg px-3 py-2" />
-            <input v-model="newAddress.house_number" placeholder="House Number" class="border rounded-lg px-3 py-2" />
-            <input v-model="newAddress.line1" placeholder="Street" class="border rounded-lg px-3 py-2" />
-            <input v-model="newAddress.line2" placeholder="Address Line 2 (optional)" class="border rounded-lg px-3 py-2" />
-            <input v-model="newAddress.city" placeholder="City" class="border rounded-lg px-3 py-2" />
-            <input v-model="newAddress.state" placeholder="State" class="border rounded-lg px-3 py-2" />
-            <input v-model="newAddress.postal_code" placeholder="Postal Code" class="border rounded-lg px-3 py-2" />
-            <input v-model="newAddress.country" placeholder="Country" class="border rounded-lg px-3 py-2" />
+            <input v-model="newAddress.name" placeholder="Full Name" class="border rounded px-3 py-2" />
+            <input v-model="newAddress.phone" placeholder="Phone" class="border rounded px-3 py-2" />
+            <input v-model="newAddress.house_number" placeholder="House Number" class="border rounded px-3 py-2" />
+            <input v-model="newAddress.line1" placeholder="Street" class="border rounded px-3 py-2" />
+            <input v-model="newAddress.line2" placeholder="Address Line 2 (optional)" class="border rounded px-3 py-2" />
+            <input v-model="newAddress.city" placeholder="City" class="border rounded px-3 py-2" />
+            <input v-model="newAddress.state" placeholder="State" class="border rounded px-3 py-2" />
+            <input v-model="newAddress.postal_code" placeholder="Postal Code" class="border rounded px-3 py-2" />
+            <input v-model="newAddress.country" placeholder="Country" class="border rounded px-3 py-2" />
           </div>
 
           <p v-if="addressError" class="text-red-600 text-sm mt-2">
@@ -213,28 +256,29 @@ const placeOrder = async () => {
           </p>
 
           <button
+            v-if="!isGuest"
             @click="saveNewAddress"
-            class="mt-4 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700"
+            class="mt-4 bg-orange-600 text-white px-4 py-2 rounded-lg"
           >
             Save Address
           </button>
         </div>
       </div>
 
-      <!-- ================= CART SUMMARY ================= -->
+      <!-- ================= SUMMARY ================= -->
       <div class="bg-white p-6 rounded-xl border border-orange-200">
         <h2 class="text-lg font-semibold mb-4">Order Summary</h2>
 
         <div
           v-for="item in cartItems"
-          :key="item.productId"
-          class="flex justify-between border-b pb-2 mb-2"
+          :key="item.id"
+          class="flex justify-between mb-2"
         >
           <span>{{ item.name }} × {{ item.quantity }}</span>
           <span>€{{ formatPrice(item.price * item.quantity) }}</span>
         </div>
 
-        <div class="flex justify-between text-lg font-semibold mt-4">
+        <div class="flex justify-between font-semibold text-lg mt-4">
           <span>Total</span>
           <span>€{{ formatPrice(cartTotal) }}</span>
         </div>
@@ -245,7 +289,7 @@ const placeOrder = async () => {
         @click="placeOrder"
         :disabled="loading"
         class="w-full bg-orange-500 hover:bg-orange-600
-               text-white py-3 rounded-lg transition"
+               text-white py-3 rounded-lg"
       >
         {{ loading ? "Placing Order..." : "Place Order" }}
       </button>

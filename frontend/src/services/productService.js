@@ -65,6 +65,56 @@ export const createProductWithImage = async ({
 }
 
 
+
+/* =======================
+   🔥 MISSING FUNCTION (ADDED)
+======================= */
+
+export const updateProductWithImage = async (
+  id,
+  {
+    name,
+    description,
+    price,
+    stock,
+    is_active = true,
+    tag_ids = [],
+    imageFile = null
+  }
+) => {
+  const formData = new FormData()
+
+  // ✅ Append image ONLY if changed
+  if (imageFile instanceof File) {
+    formData.append("image", imageFile)
+  }
+
+  if (name !== undefined) formData.append("name", name)
+  if (description !== undefined) formData.append("description", description)
+  if (price !== undefined) formData.append("price", price)
+  if (stock !== undefined) formData.append("stock", stock)
+  if (is_active !== undefined) formData.append("is_active", is_active)
+
+  if (tag_ids.length > 0) {
+    formData.append("tag_ids", tag_ids.join(","))
+  } else {
+    // allow clearing tags
+    formData.append("tag_ids", "")
+  }
+
+  const res = await api.patch(
+    `/admin/products/${id}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
+    }
+  )
+
+  return res.data
+}
+
 // Update product (basic fields)
 export const updateProduct = (id, name, price, stock) => {
   return api.patch(`/admin/products/${id}`, {
