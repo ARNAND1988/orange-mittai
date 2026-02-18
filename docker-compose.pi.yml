@@ -1,0 +1,55 @@
+
+services:
+  traefik:
+    image: traefik:v3.0
+    restart: always
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.le.acme.httpchallenge=true"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.le.acme.email=admin@yourdomain.com"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://api:8000
+    restart: always
+    expose:
+      - "8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`shop.yourdomain.com`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=le"
+
+  api:
+    build: ./backend
+    restart: always
+    env_file: .env.pi
+    expose:
+      - "8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: orangemittai
+      POSTGRES_USER: orangemittai
+      POSTGRES_PASSWORD=strongpassword
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

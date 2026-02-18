@@ -1,0 +1,7 @@
+
+services:
+  api:
+    image: gcr.io/YOUR_PROJECT/orangemittai-api
+    env_file: .env.gcp
+    ports:
+      - "8000:8000"

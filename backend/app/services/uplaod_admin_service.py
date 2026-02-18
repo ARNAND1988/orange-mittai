@@ -1,64 +1,84 @@
-# services/gcs.py
 import os
 import uuid
-from fastapi import UploadFile
 import logging
 from urllib.parse import urlparse
+from fastapi import UploadFile
 
+from app.config import (
+    STORAGE_BACKEND,
+    LOCAL_UPLOAD_DIR,
+    BUCKET_NAME,
+    CDN_BASE_URL,
+)
 
 logger = logging.getLogger(__name__)
-APP_ENV = os.getenv("APP_ENV", "local")
 
-# Only import GCS in cloud
-if APP_ENV == "cloud":
-    from google.cloud import storage
-
-BUCKET_NAME = "orange-mittai-store"
-CDN_BASE_URL = os.getenv("CDN_BASE_URL", "http://localhost:8000")
-
-# Local mock storage directory
-LOCAL_PRODUCTS_DIR = "/tmp/products"
-
+# --------------------------------------------------
+# Entry points (USED BY ROUTES / SERVICES)
+# --------------------------------------------------
 
 def upload_product_image(file: UploadFile) -> str:
     """
-    Uploads image to GCS in cloud
-    Saves image locally in local env
+    Upload product image using configured storage backend
     """
+    if STORAGE_BACKEND == "gcs":
+        return _gcs_upload(file)
 
-    if APP_ENV == "local":
-        return mock_upload(file)
-
-    return gcs_upload(file)
+    return _local_upload(file)
 
 
-# =========================
-# MOCK UPLOAD (LOCAL ONLY)
-# =========================
-def mock_upload(file: UploadFile) -> str:
+def delete_product_image(image_url: str):
     """
-    Saves image to local filesystem and returns local URL
+    Delete product image from configured storage backend
     """
+    if not image_url:
+        return
 
-    os.makedirs(LOCAL_PRODUCTS_DIR, exist_ok=True)
-    logger.info("Mock upload started")
-    logger.debug("Filename: %s", file.filename)
+    try:
+        if STORAGE_BACKEND == "gcs":
+            _delete_gcs_image(image_url)
+        else:
+            _delete_local_image(image_url)
+    except Exception as e:
+        logger.warning("Failed to delete image %s: %s", image_url, e)
+
+# --------------------------------------------------
+# LOCAL STORAGE (Raspberry Pi / Dev)
+# --------------------------------------------------
+
+def _local_upload(file: UploadFile) -> str:
+    os.makedirs(LOCAL_UPLOAD_DIR, exist_ok=True)
+
     ext = file.filename.split(".")[-1]
-    filename = f"mock-{uuid.uuid4()}.{ext}"
-    file_path = os.path.join(LOCAL_PRODUCTS_DIR, filename)
+    filename = f"{uuid.uuid4()}.{ext}"
+    file_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
 
-    # Save file locally
+    logger.info("Local upload: %s", file_path)
+
     with open(file_path, "wb") as f:
         f.write(file.file.read())
 
-    # Return URL that FastAPI can serve
+    # served via StaticFiles
     return f"{CDN_BASE_URL}/products/{filename}"
 
 
-# =========================
-# REAL GCS UPLOAD (CLOUD)
-# =========================
-def gcs_upload(file: UploadFile) -> str:
+def _delete_local_image(image_url: str):
+    parsed = urlparse(image_url)
+    filename = os.path.basename(parsed.path)
+
+    file_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        logger.info("Deleted local image: %s", file_path)
+
+# --------------------------------------------------
+# GCS STORAGE (GCP)
+# --------------------------------------------------
+
+def _gcs_upload(file: UploadFile) -> str:
+    from google.cloud import storage  # lazy import
+
     client = storage.Client()
     bucket = client.bucket(BUCKET_NAME)
 
@@ -70,49 +90,20 @@ def gcs_upload(file: UploadFile) -> str:
 
     blob.upload_from_file(
         file.file,
-        content_type=file.content_type
+        content_type=file.content_type,
+        rewind=True,
     )
 
     return f"{CDN_BASE_URL}/{object_path}"
 
-def delete_product_image(image_url: str):
-    """
-    Deletes product image from local storage or GCS
-    """
-    if not image_url:
-        return
 
-    try:
-        if APP_ENV == "local":
-            delete_local_image(image_url)
-        else:
-            delete_gcs_image(image_url)
-    except Exception as e:
-        logger.warning("Failed to delete image %s: %s", image_url, e)
+def _delete_gcs_image(image_url: str):
+    from google.cloud import storage  # lazy import
 
-def delete_local_image(image_url: str):
-    """
-    Deletes locally stored image based on URL
-    """
-    parsed = urlparse(image_url)
-    filename = os.path.basename(parsed.path)
-
-    file_path = os.path.join(LOCAL_PRODUCTS_DIR, filename)
-
-    if os.path.exists(file_path):
-        os.remove(file_path)
-        logger.info("Deleted local image: %s", file_path)
-
-def delete_gcs_image(image_url: str):
-    """
-    Deletes image from GCS using its CDN URL
-    """
     client = storage.Client()
     bucket = client.bucket(BUCKET_NAME)
 
-    # CDN_BASE_URL/products/uuid.jpg → products/uuid.jpg
     object_path = image_url.replace(f"{CDN_BASE_URL}/", "")
-
     blob = bucket.blob(object_path)
 
     if blob.exists():

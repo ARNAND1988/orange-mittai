@@ -1,0 +1,13 @@
+http:
+  routers:
+    frontend:
+      rule: "Host(`shop.localhost`)"
+      entryPoints:
+        - web
+      service: frontend
+
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:8080"

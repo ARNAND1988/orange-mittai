@@ -7,7 +7,7 @@ import { showGlobalToast } from "@/utils/toast";
  * Axios instance
  */
 const axiosInstance = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
+  baseURL: `${API_BASE_URL}/v1`,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",

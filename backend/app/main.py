@@ -18,6 +18,7 @@ from app.api.v1.admin.order_admin import router as admin_order_router
 from app.api.v1.admin.tag_admin import router as admin_tag_router
 from app.api.v1.tags import router as tag_router
 
+from app.config import APP_ENV
 # -------------------------------------------------
 # Logging MUST be first
 # -------------------------------------------------
@@ -48,16 +49,21 @@ app.mount(
 # -------------------------------------------------
 # CORS
 # -------------------------------------------------
-FRONTEND_ORIGINS = os.getenv(
-    "FRONTEND_ORIGINS",
-    "http://localhost:5173"
-).split(",")
 
-logging.info("[CORS] Allowed origins: %s", FRONTEND_ORIGINS)
+
+
+if APP_ENV == "pi":
+    allow_origins = ["http://shop.localhost"]
+elif APP_ENV == "gcp":
+    allow_origins = ["https://shop.yourdomain.com"]
+else:
+    allow_origins = ["http://localhost:5173"]
+
+logging.info("APP_ENV %s, [CORS] Allowed origins: %s", APP_ENV, allow_origins)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=FRONTEND_ORIGINS,
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
